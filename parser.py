@@ -5,14 +5,22 @@ import argparse
 from multiprocessing import Process, Manager
 from natasha import MorphVocab, NamesExtractor
 
+input_content = None
 
 class Natasha(object):
     '''Класс парсера'''
-
+    REGEX_NEW = None
+    REGEX_OLD = None
+    MISC_REGEX_NEW = None
+    MISC_REGEX_OLD = None
+    
     def __init__(self):
         self.morph_vocab = MorphVocab()
         self.names_extractor = NamesExtractor(self.morph_vocab)
-
+        REGEX_NEW = Natasha.REGEX_NEW 
+        REGEX_OLD = Natasha.REGEX_OLD 
+        MISC_REGEX_NEW = Natasha.REGEX_OLD 
+        MISC_REGEX_OLD = Natasha.MISC_REGEX_OLD 
     def __extract_name(self, text):
         '''Достаем имя из строки'''
 
@@ -115,7 +123,7 @@ class Natasha(object):
 
         return row
 
-    @classmethod
+    #@classmethod
     def compile_regex(cls):
         '''Собираем регулярки для поиска договоров'''
         
@@ -144,8 +152,8 @@ class Natasha(object):
             'prefix_and_whitespace': re.compile(f"^({'|'.join(p for p in cls.PREFIXES_OLD)})\s"),
             'whitespace_before_num': re.compile(f"({'|'.join(y for  y in cls.ACCEPTABLE_YEARS_OLD)})\s?-?-?\s?\d+")
         }
-
-    @classmethod
+        #print("here2")
+    #@classmethod
     def init_meta(cls, values):
         '''Инициализирует атрибуты класса (префиксы, суффиксы, периоды)'''
         
@@ -173,13 +181,16 @@ class Natasha(object):
             for p in SET:
                 if 'З' in p:
                     SET.append(p.replace('З', '3'))
+        #print("here3")
 
-
-def worker(chunk_to_parse, shared_list):
+def worker(chunk_to_parse, shared_list, input_content):
     '''Воркер одиночного процесса. Обрабатывает кусок данных, добавляет результат в общий список.
        Несколько воркеров работают параллельно.'''
-
+    #global input_content
     parser = Natasha()
+    parser.init_meta(input_content['meta'])
+    #print("here")
+    parser.compile_regex()
     for row in chunk_to_parse:
         shared_list.append(parser.parse_row(row))
 
@@ -212,8 +223,7 @@ if __name__ == '__main__':
         for i, l in enumerate(to_parse):
             l['idx'] = i
 
-        Natasha.init_meta(input_content['meta'])
-        Natasha.compile_regex()
+        
 
     except:
         raise ValueError(f'Ошибка: данные в файле "{args.input_filename}" не соответствуют ожидаемой схеме!')
@@ -237,7 +247,7 @@ if __name__ == '__main__':
     workers = []
     for i in range(args.threads):
         part = partitions[i]
-        workers.append(Process(target=worker, args=(to_parse[part[0]:part[1]], results)))
+        workers.append(Process(target=worker, args=(to_parse[part[0]:part[1]], results, input_content)))
         workers[i].start()
 
     # ждем, пока все закончат
