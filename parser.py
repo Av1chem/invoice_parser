@@ -260,7 +260,7 @@ if __name__ == '__main__':
 
     # сохраняем в файл
     try:
-        with open(args.output_filename, 'w+') as f:
+        with open(args.output_filename, 'w+', encoding='utf-8') as f:
             f.write(json.dumps(results, ensure_ascii=False, indent=4))
 
     except Exception as ex:
